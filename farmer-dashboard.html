@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Farmer Dashboard — FamFresh</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+<script src="app-full.js" defer></script>
+</head>
+<body class="bg-green-50 min-h-screen flex flex-col">
+
+<header class="bg-green-700 text-white p-4 flex justify-between items-center shadow">
+  <h1 class="font-bold text-xl">Farmer Dashboard</h1>
+  <button id="logoutBtn" class="bg-red-600 px-3 py-1 rounded">Logout</button>
+</header>
+
+<main class="flex-1 p-6 grid md:grid-cols-2 gap-6">
+
+  <!-- Product Management -->
+  <section class="bg-white p-6 rounded shadow">
+    <h2 class="text-xl font-bold mb-4">Add New Product</h2>
+    <div class="space-y-2">
+      <input id="prodName" placeholder="Product Name" class="w-full border px-3 py-2 rounded">
+      <input id="prodPrice" placeholder="Price per unit" type="number" class="w-full border px-3 py-2 rounded">
+      <input id="prodUnit" placeholder="Unit (kg, liter, etc.)" class="w-full border px-3 py-2 rounded">
+      <input id="prodCategory" placeholder="Category (Fruits/Vegetables)" class="w-full border px-3 py-2 rounded">
+      <textarea id="prodDesc" placeholder="Description" class="w-full border px-3 py-2 rounded"></textarea>
+      <input id="prodImage" type="file" class="w-full border px-3 py-2 rounded">
+      <button id="addProdBtn" class="bg-green-700 text-white px-4 py-2 rounded">Add Product</button>
+      <p id="prodMsg" class="text-red-500 text-xs"></p>
+    </div>
+  </section>
+
+  <!-- Product List -->
+  <section class="bg-white p-6 rounded shadow">
+    <h2 class="text-xl font-bold mb-4">My Products</h2>
+    <div id="farmerProducts" class="space-y-3 max-h-[400px] overflow-auto"></div>
+  </section>
+
+</main>
+
+<!-- Chatbot -->
+<div id="chatbot-root-farmer"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const addBtn = document.getElementById('addProdBtn');
+  const msg = document.getElementById('prodMsg');
+  const prodList = document.getElementById('farmerProducts');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  // Add Product
+  addBtn.addEventListener('click', async ()=>{
+    const name = document.getElementById('prodName').value.trim();
+    const price = parseFloat(document.getElementById('prodPrice').value);
+    const unit = document.getElementById('prodUnit').value.trim();
+    const category = document.getElementById('prodCategory').value.trim();
+    const description = document.getElementById('prodDesc').value.trim();
+    const file = document.getElementById('prodImage').files[0];
+    if(!name || !price || !unit || !category) { msg.textContent = 'Please fill all required fields.'; return; }
+
+    let imageDataUrl = '';
+    if(file){
+      const reader = new FileReader();
+      reader.onload = async (e)=>{
+        imageDataUrl = e.target.result;
+        await appData.addProduct({name, price, unit, category, description, imageDataUrl, ownerEmail:'demo@famfresh.com'});
+        msg.textContent='Product added!';
+        renderProducts();
+      };
+      reader.readAsDataURL(file);
+    } else {
+      await appData.addProduct({name, price, unit, category, description, imageDataUrl:'', ownerEmail:'demo@famfresh.com'});
+      msg.textContent='Product added!';
+      renderProducts();
+    }
+  });
+
+  // Render Products
+  async function renderProducts(){
+    const products = await appData.getProducts();
+    prodList.innerHTML = '';
+    products.filter(p=>p.owner==='demo@famfresh.com').forEach((p)=>{
+      const div = document.createElement('div');
+      div.className='border p-2 rounded flex justify-between items-center';
+      div.innerHTML = `
+        <span>${p.name} - ${p.price} KES / ${p.unit}</span>
+        <button class="bg-red-600 text-white px-2 py-1 rounded">Delete</button>
+      `;
+      div.querySelector('button').addEventListener('click', async ()=>{
+        await appData.removeProduct(p.id);
+        renderProducts();
+      });
+      prodList.appendChild(div);
+    });
+  }
+
+  logoutBtn.addEventListener('click', ()=>location.reload());
+
+  renderProducts();
+});
+</script>
+
+</body>
+</html>
