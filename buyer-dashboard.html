@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buyer Dashboard — FamFresh</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+<script src="app-full.js" defer></script>
+</head>
+<body class="bg-green-50 min-h-screen flex flex-col">
+
+<header class="bg-green-700 text-white p-4 flex justify-between items-center shadow">
+  <h1 class="font-bold text-xl">Buyer Dashboard</h1>
+  <button id="logoutBtn" class="bg-red-600 px-3 py-1 rounded">Logout</button>
+</header>
+
+<main class="flex-1 p-6 grid md:grid-cols-2 gap-6">
+
+  <!-- Product List -->
+  <section class="bg-white p-6 rounded shadow">
+    <h2 class="text-xl font-bold mb-4">Available Products</h2>
+    <div id="buyerProducts" class="space-y-3 max-h-[400px] overflow-auto"></div>
+  </section>
+
+  <!-- Cart -->
+  <section class="bg-white p-6 rounded shadow">
+    <h2 class="text-xl font-bold mb-4">Cart</h2>
+    <div id="cartItems" class="space-y-2"></div>
+    <div class="mt-4 font-bold">Total: <span id="cartTotal">0</span> KES</div>
+    <button id="clearCartBtn" class="mt-2 bg-red-600 text-white px-4 py-2 rounded">Clear Cart</button>
+  </section>
+
+</main>
+
+<!-- Chatbot -->
+<div id="chatbot-root"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async ()=>{
+  const productsEl = document.getElementById('buyerProducts');
+  const cartEl = document.getElementById('cartItems');
+  const cartTotalEl = document.getElementById('cartTotal');
+  const clearBtn = document.getElementById('clearCartBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  async function renderProducts(){
+    const products = await appData.getProducts();
+    productsEl.innerHTML = '';
+    products.forEach(p=>{
+      const div = document.createElement('div');
+      div.className='border p-3 rounded flex justify-between items-center';
+      div.innerHTML = `
+        <div>
+          <strong>${p.name}</strong> (${p.price} KES/${p.unit})
+        </div>
+        <button class="bg-green-700 text-white px-2 py-1 rounded addBtn">Add</button>
+      `;
+      div.querySelector('.addBtn').addEventListener('click', ()=>{
+        cartAPI.addItem({...p, quantity:1});
+        renderCart();
+      });
+      productsEl.appendChild(div);
+    });
+  }
+
+  function renderCart(){
+    const cart = cartAPI.getCart();
+    cartEl.innerHTML = '';
+    cart.forEach((item,i)=>{
+      const div = document.createElement('div');
+      div.className='bg-green-50 p-2 rounded flex justify-between items-center';
+      div.innerHTML = `<span>${item.name} x ${item.quantity} (${item.price*item.quantity} KES)</span>
+        <button class="bg-red-600 text-white px-2 py-1 rounded removeBtn">Remove</button>`;
+      div.querySelector('.removeBtn').addEventListener('click', ()=>{
+        cartAPI.removeItem(i);
+        renderCart();
+      });
+      cartEl.appendChild(div);
+    });
+    cartTotalEl.textContent = cartAPI.getTotal();
+  }
+
+  clearBtn.addEventListener('click', ()=>{
+    cartAPI.clearCart();
+    renderCart();
+  });
+
+  logoutBtn.addEventListener('click', ()=>location.reload());
+
+  await appData.seedIfEmpty();
+  await renderProducts();
+  renderCart();
+});
+</script>
+
+</body>
+</html>
